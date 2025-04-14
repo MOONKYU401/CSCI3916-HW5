@@ -183,33 +183,50 @@ router.route('/movies')
 
   router.route('/movies/:movieId')
   .get(authJwtController.isAuthenticated, async (req, res) => {
-    const id = req.params.movieId;  
+    const id = req.params.movieId;
+
+    // Check if movieId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid movie ID' });
+    }
+
     try {
-          const movie = await Movie.findById(req.params.movieId); 
-          if (!movie) return res.status(404).json({ message: 'Movie not found.' });
-          res.json(movie);
-      } catch (err) {
-          res.status(500).json({ message: err.message });
+      let movie;
+
+      // If reviews=true, use aggregation
+      if (req.query.reviews === "true") {
+        const result = await Movie.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(id) } },
+          {
+            $lookup: {
+              from: "reviews",
+              localField: "_id",
+              foreignField: "movieId",
+              as: "movieReviews"
+            }
+          },
+          {
+            $addFields: {
+              avgRating: { $avg: "$movieReviews.rating" }
+            }
+          }
+        ]);
+        movie = result[0];
+      } else {
+        // Regular findById for simple fetch
+        movie = await Movie.findById(id);
       }
+
+      if (!movie) {
+        return res.status(404).json({ message: 'Movie not found.' });
+      }
+
+      res.json(movie);
+    } catch (err) {
+      console.error('Error fetching movie:', err);
+      res.status(500).json({ message: err.message });
+    }
   })
-  .post(authJwtController.isAuthenticated, async (req, res) => {
-      try {
-          const movie = await Movie.findByIdAndUpdate(req.params.movieId, req.body, { new: true });
-          if (!movie) return res.status(404).json({ message: 'Movie not found.' });
-          res.json(movie);
-      } catch (err) {
-          res.status(500).json({ message: err.message });
-      }
-  })
-  .delete(authJwtController.isAuthenticated, async (req, res) => {
-      try {
-          const movie = await Movie.findByIdAndDelete(req.params.movieId);
-          if (!movie) return res.status(404).json({ message: 'Movie not found.' });
-          res.json({ message: 'Movie deleted successfully.' });
-      } catch (err) {
-          res.status(500).json({ message: err.message });
-      }
-  });
 
 
   const Review = require('./Reviews');
