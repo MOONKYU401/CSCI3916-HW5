@@ -34,7 +34,7 @@ router.post('/signup', async (req, res) => { // Use async/await
     await user.save(); // Use await with user.save()
 
     res.status(200).json({ success: true, msg: 'Successfully created new user.' }); // 201 Created
-  } catch (err) {
+  } catch (err  ) {
     if (err.code === 11000) { // Strict equality check (===)
       return res.status(409).json({ success: false, message: 'A user with that username already exists.' }); // 409 Conflict
     } else {
@@ -71,42 +71,41 @@ router.post('/signin', function (req, res) {
 
 router.route('/movies/:movieId')
   .get(authJwtController.isAuthenticated, async (req, res) => {
-      const id = req.params.movieId;
-      try {
-          let movie;
-          if (req.query.reviews === "true") {
-              const results = await Movie.aggregate([
-                  { $match: { _id: new mongoose.Types.ObjectId(id) } },
-                  {
-                      $lookup: {
-                          from: "reviews",
-                          localField: "_id",
-                          foreignField: "movieId",
-                          as: "reviews"
-                      }
-                  },
-                  {
-                      $addFields: {
-                          avgRating: {
-                              $cond: {
-                                  if: { $gt: [ { $size: "$reviews" }, 0 ] },
-                                  then: { $avg: "$reviews.rating" },
-                                  else: null
-                              }
-                          }
-                      }
-                  }
-              ]);
-              movie = results[0];
-          } else {
-              movie = await Movie.findById(id);
-          }
+    const id = req.params.movieId;
 
-          if (!movie) return res.status(404).json({ message: 'Movie not found.' });
-          res.json(movie);
-      } catch (err) {
-          res.status(500).json({ message: err.message });
+    try {
+      let movie;
+      if (req.query.reviews === "true") {
+        const aggregate = [
+          {
+            $match: { _id: new mongoose.Types.ObjectId(id) } // Convert to ObjectId
+          },
+          {
+            $lookup: {
+              from: 'reviews',
+              localField: '_id',
+              foreignField: 'movieId',
+              as: 'movieReviews'
+            }
+          },
+          {
+            $addFields: {
+              avgRating: { $avg: '$movieReviews.rating' }
+            }
+          }
+        ];
+
+        const result = await Movie.aggregate(aggregate);
+        movie = result[0];
+      } else {
+        movie = await Movie.findById(id);
       }
+
+      if (!movie) return res.status(404).json({ message: 'Movie not found.' });
+      res.json(movie);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
 router.route('/movies')
