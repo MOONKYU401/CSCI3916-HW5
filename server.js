@@ -229,7 +229,7 @@ router.route('/movies')
 // POST create new review (JWT protected)
 .post(authJwtController.isAuthenticated, async (req, res) => {
   const { movieId, review, rating } = req.body;
-  const username = req.user.username; // ✅ secure source of username
+  const username = req.user.username; // secure source of username
 
   if (!movieId || !review || rating === undefined) {
     return res.status(400).json({ message: 'movieId, review, and rating are required.' });
