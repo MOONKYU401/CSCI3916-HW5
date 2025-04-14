@@ -226,23 +226,24 @@ router.route('/movies')
         }
     })
   
-    // POST create new review (JWT protected)
-    .post(authJwtController.isAuthenticated, async (req, res) => {
-        const { movieId, username, review, rating } = req.body;
-  
-        if (!movieId || !review || rating === undefined) {
-            return res.status(400).json({ message: 'movieId, review, and rating are required.' });
-        }
-  
-        try {
-            const newReview = new Review({ movieId, username, review, rating });
-            await newReview.save();
-            res.status(200).json({ message: 'Review created!' });
-        } catch (err) {
-            res.status(500).json({ message: err.message });
-        }
-    });
-  
+// POST create new review (JWT protected)
+.post(authJwtController.isAuthenticated, async (req, res) => {
+  const { movieId, review, rating } = req.body;
+  const username = req.user.username; // ✅ secure source of username
+
+  if (!movieId || !review || rating === undefined) {
+    return res.status(400).json({ message: 'movieId, review, and rating are required.' });
+  }
+
+  try {
+    const newReview = new Review({ movieId, username, review, rating });
+    await newReview.save();
+    res.status(200).json({ message: 'Review created!' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
   // Optional: DELETE a review by ID (JWT protected)
   router.delete('/reviews/:reviewId', authJwtController.isAuthenticated, async (req, res) => {
     try {
