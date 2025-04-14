@@ -68,7 +68,27 @@ router.post('/signin', function (req, res) {
     })
 });
 
-
+router.post('/movies/search', authJwtController.isAuthenticated, async (req, res) => {
+    const { query } = req.body;
+  
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required.' });
+    }
+  
+    try {
+      const movies = await Movie.find({
+        $or: [
+          { title: { $regex: query, $options: 'i' } }, // case-insensitive title match
+          { 'actors.actorName': { $regex: query, $options: 'i' } } // match in actors array
+        ]
+      });
+  
+      res.status(200).json(movies);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+  
 router.route('/movies/:movieId')
   .get(authJwtController.isAuthenticated, async (req, res) => {
     const id = req.params.movieId;
